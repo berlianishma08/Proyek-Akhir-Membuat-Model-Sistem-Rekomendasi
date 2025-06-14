@@ -50,46 +50,25 @@ Untuk ratings.csv terdiri dari **25000095 baris dan 4 kolom**, yang mencakup ber
 * **timestamp**: mewakili detik sejak tengah malam Waktu Universal Terkoordinasi (UTC) tanggal 1 Januari 1970.
 
 ###  Exploratory Data Analysis (EDA):
-Lampiran Grafik EDA:
-![Screenshot 2025-05-26 223042](https://github.com/user-attachments/assets/13f6f57b-e23b-4ca4-9342-feccb2b68fec)
 
-* **Tidak ada nilai kosong (missing values)** pada sebagian besar kolom berdasarkan hasil `df.isnull().sum()`. Namun, kolom `TotalCharges` bertipe `object` meskipun berisi angka. Setelah dikonversi ke `float`, ditemukan **11 nilai NaN**, yang akan ditangani pada tahap data preparation.
-* **Tidak terdapat duplikat** dalam data.
-* Kolom `customerID` merupakan identifier unik yang tidak memiliki kontribusi terhadap prediksi dan akan dihapus.
-* **Distribusi target (`Churn`) menunjukkan ketidakseimbangan kelas**:
+* Dataset ratings yang awalnya terdiri dari **25000095 baris**, dikurangi hingga **135714  baris** karena RAM tidak menyanggupi dataset yang terlalu banyak. Pengurangan baris didasarkan oleh 1000 pengguna pertama (berdasarkan userId) dan hanya mengambil film yang setidaknya memiliki penilaian sebanyak 3.
 
-  * Sekitar **73%** data berada pada kelas `No` (tidak churn)
-  * Sekitar **27%** data berada pada kelas `Yes` (churn)
-    Hal ini menandakan bahwa dataset bersifat **imbalanced**, yang perlu menjadi perhatian khusus dalam proses pelatihan model.
+* Dataset movies yang awalnya terdiri dari **62423 baris**, dikurangi hingga **5699 baris** karena RAM tidak menyanggupi dataset yang terlalu banyak. Pengurangan baris didasarkan oleh movieId hasil saring ratings_reduced.csv
 
-* Beberapa fitur seperti `Contract`, `PaymentMethod`, `InternetService`, dan `OnlineBackup` memiliki **kategori yang berbeda-beda**, yang perlu diubah menjadi representasi numerik menggunakan encoding pada tahap selanjutnya.
+* **Tidak ditemukan nilai duplikat** dalam dataset. Hal ini penting untuk memastikan tidak ada baris data yang secara tidak sengaja menggandakan informasi pelanggan.
 
-### **Correlation Matrix**
-Lampiran Correlation Matrix:
-![image](https://github.com/user-attachments/assets/f2bc62dd-e116-42c6-8245-8ab284a64263)
+* Untuk memahami keragaman nilai dalam fitur kategorikal seperti `rating` dilakukan eksplorasi menggunakan fungsi `value_counts()` agar mengetahui distribusi tiap jumlah rating.
 
-* Setelah proses encoding, dilakukan analisis **matriks korelasi (correlation matrix)** untuk mengetahui hubungan antar fitur. Visualisasi seperti heatmap digunakan untuk mengidentifikasi fitur-fitur yang paling berpengaruh, serta untuk mendeteksi multikolinearitas antar fitur.
+* Dari hasil visualisasi dataset, didapatkan bahwa:
 
-Berikut adalah detail dari korelasi antar fitur:
-- `gender`: Tingkat korelasi rendah dengan semua fitur
-- `SeniorCitizen`: Tingkat korelasi rendah dengan semua fitur
-- `Partner`: Tingkat korelasi sebesar 0.45 dengan fitur 'Dependents'
-- `Dependents`: Tingkat korelasi sebesar 0.45 dengan fitur 'Partner'
-- `PhoneService`: Tingkat korelasi sebesar 0.68 dengan fitur 'MultipleLines'
-- `MultipleLines`: Tingkat korelasi sebesar 0.68 dengan fitur 'PhoneService'
-- `InternetService`: Tingkat korelasi sebesar 0.72 dengan fitur 'TechSupport' dan 'OnlineSecurity'
-- `OnlineSecurity`: Tingkat korelasi sebesar 0.74 dengan fitur 'TechSupport'
-- `OnlineBackup`: Tingkat korelasi sebesar 0.71 dengan fitur 'TechSupport', 'DeviceProtection', 'MonthlyCharges' dan 'OnlineSecurity'
-- `DeviceProtection`: Tingkat korelasi sebesar 0.75 dengan fitur 'StreamingTV' dan 'StreamingFilm'
-- `TechSupport`: Tingkat korelasi sebesar 0.74 dengan fitur 'OnlineSecurity'
-- `StreamingTV` & `StreamingMovies`: Tingkat korelasi sebesar 0.82 dengan fitur 'MonthlyCharges'
-- `Contract`: Tingkat korelasi sebesar 0.67 dengan fitur 'tenure'
-- `PaymentMethod`: Tingkat korelasi sebesar 0.35 dengan fitur 'Contract'
-- `PaperlessBilling`: Tingkat korelasi sebesar 0.35 dengan fitur 'MonthlyCharges'
-- `tenure`: Tingkat korelasi sebesar 0.83 dengan fitur 'TotalCharges'
-- `MonthlyCharges`: Tingkat korelasi sebesar 0.82 dengan fitur `StreamingTV` & `StreamingMovies`
-- `TotalCharges`: Tingkat korelasi sebesar 0.83 dengan fitur 'tenure'
-- `Churn`: Tingkat korelasi sebesar 0.19 dengan fitur 'MonthlyCharges' dan 'PaperlessBilling'
+  * ![Grafik 10 Film dengan Rating 5 Terbanyak](https://github.com/user-attachments/assets/c3b9429d-f30c-4ee4-ad7c-fe1f6c465e93)
+   Film dengan judul "The Shawshank Redemption" menjadi film dengan rating 5 terbanyak. Disusul oleh "Pulp Fiction", lalu "Schindler's List".
+
+  * ![Grafik 10 Film dengan Rating Terbanyak](https://github.com/user-attachments/assets/8a722845-c207-4422-a590-26f4a794bac6)
+   Film dengan judul "Forrest Gump" menjadi film dengan rating terbanyak. Disusul oleh "Pulp Fiction", lalu "The Shawshank Redemption".
+
+  * ![Grafik Distribusi Rating Pengguna](https://github.com/user-attachments/assets/aff503bb-4e00-4209-a820-f15e50ab29f6)
+   Rating 4 mendominasi angka rating lainnya. Disusul oleh angka 3, lalu angka 5.
 
 
 ## Data Preparation
@@ -97,204 +76,163 @@ Tahap ini mencakup proses transformasi data mentah menjadi bentuk yang siap digu
 
 ---
 
-###  1. **Transform Tipe Data**
-
-* Dilakukan konversi kolom `TotalCharges` dari tipe `object` ke `float` menggunakan `pd.to_numeric(errors='coerce')`.
+###  1. **Menggabungkan Data**:
+   - Menggabungkan dataframe `ratings_reduced` (berisi data rating) dengan `movies_reduced` (berisi data film)
+   - Digabungkan berdasarkan kolom `movieId` yang sama di kedua dataframe
+   - Hasilnya adalah dataframe baru yang berisi informasi rating + detail film
 
 ```python
-df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
+movie_data = pd.merge(ratings_reduced, movies_reduced, on='movieId')
 ```
 
 ---
 
-###  2. **Handling Missing Values**
-
-* Awalnya, dataset tidak memiliki missing value eksplisit (`df.isnull().sum()` menunjukkan 0 pada semua kolom).
-* Namun, setelah dilakukan konversi kolom `TotalCharges`, sebanyak **11 nilai menjadi `NaN`** karena berisi spasi atau string kosong.
-* Missing value ini kemudian ditangani dengan cara **mengisi nilai yang hilang menggunakan median** dari kolom `TotalCharges`. Penggunaan median dipilih karena lebih tahan terhadap outlier dibandingkan mean.
+###  2. **Membuat Matriks User-Item**:
+   - Membuat matriks dengan:
+     - Baris: `userId` (setiap pengguna)
+     - Kolom: `title` (judul film)
+     - Nilai: `rating` yang diberikan pengguna pada film tersebut
+   - `fillna(0)` mengisi nilai kosong dengan 0 (artinya pengguna belum memberi rating)
 
 ```python
-df['TotalCharges'].fillna(df['TotalCharges'].median(), inplace=True)
+user_item_matrix = movie_data.pivot_table(index='userId', columns='title', values='rating').fillna(0)
 ```
 
 ---
 
-###  3. **Drop Kolom Tidak Relevan**
+###  3. **Konversi ke Numpy Array**
 
-* Kolom `customerID` dihapus karena merupakan **identifier unik** yang tidak memiliki nilai prediktif dalam klasifikasi churn.
+   Konversi DataFrame menjadi array (matriks angka) supaya bisa diproses oleh model machine learning. Data ini berisi rating dari user terhadap film
 
 ```python
-df.drop(columns=['customerID'], inplace=True)
+X = user_item_matrix.values
 ```
 
 ---
 
-###  4. **Encoding Kategorikal**
-
-* Untuk dapat digunakan dalam pemodelan, fitur kategorikal perlu diubah ke format numerik.
-* Encoding dilakukan dengan pendekatan **label encoding**, mengubah kategori ke nilai 0/1/2/dst. secara eksplisit, terutama untuk fitur-fitur biner seperti `gender`, `Partner`, `Dependents`, `PaperlessBilling`, dan lainnya.
+###  4. **Split Data**
+   Data dibagi menjadi dua bagian:
+   * **80%** untuk melatih model (X\_train)
+   * **20%** untuk menguji model (X\_test)
+     Ini bertujuan untuk melihat apakah model bisa bekerja dengan baik pada data baru yang belum pernah dilihat.
 
 ```python
-# Encode fitur kategorikal
-df['gender'] = df['gender'].map({'Female': 1, 'Male': 0})
-df['Partner'] = df['Partner'].map({'Yes': 1, 'No': 0})
-df['Dependents'] = df['Dependents'].map({'Yes': 1, 'No': 0})
-df['PhoneService'] = df['PhoneService'].map({'Yes': 1, 'No': 0})
-df['MultipleLines'] = df['MultipleLines'].map({'Yes': 2, 'No': 1, 'No phone service': 0})
-df['InternetService'] = df['InternetService'].map({'DSL': 2, 'Fiber optic': 1, 'No': 0})
-df['OnlineSecurity'] = df['OnlineSecurity'].map({'Yes': 2, 'No': 1, 'No internet service': 0})
-df['OnlineBackup'] = df['OnlineBackup'].map({'Yes': 2, 'No': 1, 'No internet service': 0})
-df['DeviceProtection'] = df['DeviceProtection'].map({'Yes': 2, 'No': 1, 'No internet service': 0})
-df['TechSupport'] = df['TechSupport'].map({'Yes': 2, 'No': 1, 'No internet service': 0})
-df['StreamingTV'] = df['StreamingTV'].map({'Yes': 2, 'No': 1, 'No internet service': 0})
-df['StreamingMovies'] = df['StreamingMovies'].map({'Yes': 2, 'No': 1, 'No internet service': 0})
-df['Contract'] = df['Contract'].map({'Two year': 2, 'One year': 1, 'Month-to-month': 0})
-df['PaymentMethod'] = df['PaymentMethod'].map({'Bank transfer (automatic)':3, 'Credit card (automatic)': 2, 'Mailed check': 1, 'Electronic check': 0})
-df['PaperlessBilling'] = df['PaperlessBilling'].map({'Yes': 1, 'No': 0})
-df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
+X_train, X_test = train_test_split(X, test_size=0.2, random_state=42)
 ```
 
 ---
 
-###  5. **Feature Selection dan Final Dataset**
+## Modeling and Result
 
-* Dataset akhir yang digunakan untuk pelatihan model terdiri atas kombinasi fitur numerik dan hasil encoding fitur kategorikal.
-* Kolom target yang diprediksi adalah `Churn`.
+Collaborative Filtering adalah pendekatan rekomendasi berdasarkan pola interaksi antar pengguna, tanpa memerlukan informasi detail mengenai film itu sendiri. Sistem ini mengasumsikan bahwa jika dua pengguna menyukai item yang sama, maka mereka kemungkinan akan menyukai item lain yang sama juga.
 
----
+Untuk implementasinya, kita menggunakan teknik Matrix Factorization dengan algoritma Singular Value Decomposition (SVD).
 
-### 6. Pembagian Dataset (Train-Test Split)
+###  1. **Latih Model SVD**
 
-* Dataset dibagi menjadi data **pelatihan (training)** dan **pengujian (testing)** menggunakan fungsi `train_test_split` dari `sklearn.model_selection`.
-* **Proporsi pembagian** adalah 80% data untuk pelatihan dan 20% untuk pengujian.
-* Parameter `random_state=42` digunakan agar proses pembagian data bersifat **reproducible** (hasil selalu konsisten setiap dijalankan).
-
+   Di sini kita melatih model **SVD (Singular Value Decomposition)**.
+   `n_components=50` berarti menyederhanakan data ke dalam 50 fitur utama — seperti merangkum informasi penting dari data.
+   
 ```python
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+svd = TruncatedSVD(n_components=50, random_state=42)
+svd.fit(X_train)
 ```
 
 ---
+### 2. **fungsi get_recommendations()**
 
+Fungsi ini digunakan untuk **memberikan saran film** kepada user tertentu berdasarkan data dan model SVD yang telah kamu latih sebelumnya.
 
+a. **Prediksi Rating yang Belum Ada**
 
-## Modeling
+* **`svd.transform()`**: mengubah data user ke bentuk fitur yang telah dipelajari model.
+* **`svd.inverse_transform()`**: mengembalikan prediksi rating untuk semua film.
 
-Model yang digunakan dalam proyek ini adalah **Random Forest Classifier**, yaitu algoritma ensemble berbasis decision tree yang sangat populer dalam klasifikasi dan regresi.
+Artinya, kita meminta model untuk menebak apabila user ini menonton semua film, kira-kira rating-nya berapa?
 
-###  Cara Kerja Algoritma Random Forest:
+b. **Buat Series dari Prediksi**
 
-Random Forest bekerja dengan membangun **banyak pohon keputusan (decision trees)** pada subset acak dari data pelatihan, lalu menggabungkan hasil prediksi dari masing-masing pohon (melalui voting mayoritas untuk klasifikasi) untuk menghasilkan prediksi akhir. Proses ini dikenal sebagai **bagging (Bootstrap Aggregating)**, di mana setiap pohon:
+  Mengubah hasil prediksi jadi daftar berisi:
 
-* Dilatih dengan data yang di-*sampling* secara acak dengan pengembalian (bootstrapping).
-* Pada setiap node, hanya subset acak dari fitur yang dipertimbangkan untuk split, sehingga meningkatkan keberagaman antar pohon.
+  * Nama film
+  * Prediksi rating dari user
 
-**Keuntungan utama** Random Forest adalah:
+c. **Buang Film yang Sudah Ditonton**
 
-* Lebih tahan terhadap **overfitting** dibanding single decision tree.
-* Mampu menangani fitur kategorikal dan numerik secara bersamaan.
-* Memberikan estimasi **feature importance**, yang berguna untuk interpretasi model.
+  Karena kita **tidak ingin menyarankan film yang sudah ditonton**, bagian ini akan **membuang** semua film yang user sudah beri rating.
+
+  Lalu, film sisanya **diurutkan dari yang prediksinya paling tinggi ke rendah**.
+
+```python
+def get_recommendations(user_id, n_recommendations=5):
+    # Get user ratings
+    user_ratings = user_item_matrix.loc[user_id].values.reshape(1, -1)
+
+    # Prediksi rating
+    pred_ratings = svd.inverse_transform(svd.transform(user_ratings))
+    pred_ratings = pd.Series(pred_ratings[0], index=user_item_matrix.columns)
+
+    # Filter film yang belum ditonton
+    watched_movies = user_item_matrix.loc[user_id][user_item_matrix.loc[user_id] > 0].index
+    recommendations = pred_ratings.drop(watched_movies).sort_values(ascending=False)
+
+    return recommendations.head(n_recommendations)
+```
+
+### 3. Hasil
+
+Hasil akhirnya berupa daftar film yang **paling direkomendasikan** oleh model untuk user tersebut.
+
+Hasil untuk User 1:
+
+```
+Rekomendasi untuk User 1:
+Memento (2000)
+Fight Club (1999)
+The Lord of the Rings: The Return of the King (2003)
+The Lord of the Rings: The Fellowship of the Ring (2001)
+Kill Bill: Vol. 1 (2003)
+```
+
+**Artinya:**
+
+* Model memprediksi bahwa jika **User 1** menonton film-film di atas, **dia kemungkinan besar akan memberi rating tinggi**. Karena itu, film-film di atas **layak direkomendasikan**.
+* Nilai prediksi bisa lebih dari 1 karena SVD tidak dibatasi oleh skala rating awal (misalnya 0–5).
+* Semakin tinggi angka `pred_ratings`, semakin besar kemungkinan user akan menyukai film itu, dan angka tertinggi dipegang oleh film dengan judul "Memento".
 
 ---
 
-###  Parameter Model yang Digunakan
+## Evaluasi
 
-Model dibangun menggunakan **`RandomForestClassifier` dari library `sklearn.ensemble`** dengan parameter sebagai berikut:
+### 1. **Prediksi dan Hitung Error (RMSE)**
 
-* `random_state=42`: Digunakan untuk memastikan hasil model dapat **direproduksi**. Nilai 42 dipilih secara arbitrer namun umum digunakan sebagai nilai acuan.
-* Parameter lainnya seperti `n_estimators`, `max_depth`, dan sebagainya menggunakan nilai **default** dari scikit-learn.
-
-```python
-model = RandomForestClassifier(random_state=42)
-```
-
-Model dilatih pada data pelatihan (`X_train`, `y_train`) menggunakan:
+* **RMSE (Root Mean Squared Error)** mengukur seberapa besar **rata-rata kesalahan** model dalam membuat prediksi.
+* Nilai RMSE ini **berkisar dari 0 ke atas**. Semakin kecil, semakin **akurat** modelnya.
 
 ```python
-model.fit(X_train, y_train)
+X_pred = svd.inverse_transform(svd.transform(X_test))
+rmse = np.sqrt(mean_squared_error(X_test, X_pred))
+print(f"RMSE: {rmse:.4f}")
+
+#Hasil RMSE: 0.4388
 ```
 
-Setelah pelatihan, model digunakan untuk memprediksi data uji (`X_test`) dan dilakukan evaluasi performa menggunakan metrik klasifikasi seperti **accuracy**, **precision**, **recall**, dan **f1-score**.
+* Nilai **0.4388** berarti model cukup **baik** dalam merekomendasikan item, karena kesalahan rata-rata per prediksi cukup kecil (kurang dari 0.5).
+* RMSE di bawah **0.5** cukup bagus, terutama jika skalanya dari 0 sampai 1 atau 5.
 
-###  Feature Importance:
-Lampiran Grafik Feature Importance:
-![image](https://github.com/user-attachments/assets/8cb02cfd-f076-4558-8e77-7eafa7830107)
-* Setelah model dilatih, kita dapat mengevaluasi **seberapa besar kontribusi masing-masing fitur** terhadap prediksi churn dengan melihat `feature_importances_`.
-* Fitur dengan nilai importance lebih tinggi memiliki **pengaruh lebih besar** terhadap keputusan model.
-* Hasil ini dirangkum ke dalam dataframe dan diurutkan menurun, kemudian divisualisasikan dalam bentuk horizontal bar chart.
-* Fitur seperti `TotalCharges`, `PaymentMethod`, `Contract`, `tenure`, dan `MonthlyCharges` berada di posisi atas, menunjukkan bahwa:
+### 2. **Visualisasi Variance dari Komponen SVD**
+![Evaluasi Model](https://github.com/user-attachments/assets/fa7c4bc3-de49-4830-adaa-f8a23ea4eed8)
+Ini menunjukkan bahwa:
 
-  * **Biaya total (TotalCharges)** dan **Biaya bulanan (MonthlyCharges)** yang tinggi bisa menjadi faktor risiko churn.
-  * **Jenis kontrak** pelanggan (bulanan, tahunan) sangat memengaruhi kemungkinan churn.
-  * **Lama berlangganan (tenure)** umumnya memiliki korelasi negatif dengan churn (semakin lama, semakin kecil kemungkinan churn).
-  * **Metode pembayaran (PaymentMethod)** model prediksi churn karena metode pembayaran pelanggan dapat merefleksikan preferensi, kebiasaan, dan kemungkinan loyalitas mereka terhadap layanan.
-
-## Evaluation
-### A. Metrik Evaluasi yang Digunakan
-Dalam proyek prediksi customer churn ini, kami menggunakan empat metrik evaluasi utama untuk mengukur performa model:
-
-1. **Precision**  
-   - *Definisi*: Rasio prediksi positif yang benar (True Positive) terhadap seluruh prediksi positif (True Positive + False Positive).  
-   - *Relevansi*: Mengukur seberapa akurat model dalam memprediksi churn (menghindari false alarm).  
-
-2. **Recall (Sensitivity)**  
-   - *Definisi*: Rasio prediksi positif yang benar (True Positive) terhadap seluruh kasus aktual positif (True Positive + False Negative).  
-   - *Relevansi*: Mengukur kemampuan model menemukan pelanggan yang benar-benar berisiko churn (menghindari missed detection).  
-
-3. **F1-Score**  
-   - *Definisi*: Rata-rata harmonik (harmonic mean) dari precision dan recall.  
-   - *Relevansi*: Memberikan balance antara precision dan recall, terutama penting untuk data tidak seimbang.  
-
-4. **Accuracy**  
-   - *Definisi*: Rasio prediksi benar (True Positive + True Negative) terhadap total sampel.  
-   - *Relevansi*: Mengukur performa keseluruhan model, tetapi kurang informatif untuk data imbalance.  
+   * Komponen pertama (awal-awal) **menyumbang banyak informasi**.
+   * Semakin banyak komponen ditambahkan, **tambahan informasi yang diperoleh semakin sedikit** (diminishing returns).
+   * Dari grafik, terlihat bahwa dengan **50 komponen**, kita hanya bisa menjelaskan sekitar **49-50%** dari total informasi dalam data asli.
+   * Ini normal untuk data yang sangat sparse (jarang terisi), seperti yang kita miliki dengan **sparsity 97.62%**.
 
 
+## Kesimpulan:  
+  * **SVD cocok digunakan** karena mampu menangkap pola penting meskipun data sangat kosong.
 
-### B. Analisis Hasil Evaluasi
-
-| Metrik    | Kelas 0 (No Churn) | Kelas 1 (Churn) |
-| --------- | ------------------ | --------------- |
-| Precision | 0.83               | 0.66            |
-| Recall    | 0.91               | 0.47            |
-| F1-Score  | 0.87               | 0.55            |
-| Support   | 1036               | 373             |
-
-### C. Interpretasi:  
-####  **Kelas 0 (Tidak Churn):**
-
-* **Precision 0.83:** Dari seluruh prediksi "tidak churn", sebanyak 83% benar.
-* **Recall 0.91:** Model berhasil menangkap 91% pelanggan yang memang tidak churn.
-* **F1-score 0.87:** Performa keseluruhan untuk kelas mayoritas sangat baik.
-* Ini wajar karena kelas 0 adalah **kelas dominan (sekitar 73%)**, sehingga model memiliki cukup data untuk belajar mengenalinya.
-
-####  **Kelas 1 (Churn):**
-
-* **Precision 0.66:** Dari semua prediksi "churn", hanya 66% yang benar.
-* **Recall 0.47:** Model hanya berhasil menangkap 47% pelanggan yang benar-benar churn.
-* **F1-score 0.55:** Menunjukkan bahwa model masih **kesulitan mengenali kelas minoritas (churn)** secara akurat.
-
-####  **Akurasi dan Rata-Rata:**
-* **Accuracy 0.79:** Model secara keseluruhan benar memprediksi 79% data.
-* **Macro average:**
-
-  * Rata-rata dari masing-masing kelas tanpa mempertimbangkan proporsi data.
-  * **Recall macro hanya 0.69**, menunjukkan bahwa **kelas minoritas tidak dipelajari dengan baik**.
-* **Weighted average:**
-
-  * Rata-rata yang mempertimbangkan jumlah sampel per kelas.
-  * Nilainya lebih tinggi karena dominasi kelas 0.
-
-
-D. Rekomendasi Perbaikan
-1. **Handling Class Imbalance**  
-   - Gunakan teknik oversampling (SMOTE) atau class weighting (`class_weight='balanced'`).  
-2. **Optimasi Threshold**  
-   - Turunkan threshold prediksi churn untuk meningkatkan recall (misalnya, dari 0.5 ke 0.3).  
-3. **Eksperimen Model Lain**  
-   - Coba algoritma seperti **XGBoost** atau **LightGBM** yang lebih robust terhadap imbalance.  
-4. **Feature Engineering**  
-   - Tambahkan fitur interaksi (contoh: `MonthlyCharges/tenure`) untuk meningkatkan sinyal churn.  
-
-E. Kesimpulan:  
-Model saat ini cukup baik dalam memprediksi "No Churn" tetapi kurang optimal untuk deteksi dini churn. Fokus perbaikan harus pada peningkatan recall kelas 1 tanpa mengorbankan precision secara signifikan.
+  * Sparsity tinggi (97.62%) Data sangat jarang diisi rating — cocok pakai model seperti SVD yang bisa memprediksi data hilang.                                 
+  * SVD Explained Variance membantu memilih berapa banyak "fitur tersembunyi" (komponen) yang perlu digunakan untuk mendapatkan representasi data yang bagus.
 

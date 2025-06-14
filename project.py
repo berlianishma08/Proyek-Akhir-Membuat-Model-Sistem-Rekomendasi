@@ -126,7 +126,6 @@ def main():
         recommender.train_model()
         recommender.save_model()
     
-    # Example usage
     print("\nRecommendations for User 1:")
     print(recommender.get_recommendations(1))
 
