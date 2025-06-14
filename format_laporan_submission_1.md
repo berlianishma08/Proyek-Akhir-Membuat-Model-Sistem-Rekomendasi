@@ -51,10 +51,6 @@ Untuk ratings.csv terdiri dari **25000095 baris dan 4 kolom**, yang mencakup ber
 
 ###  Exploratory Data Analysis (EDA):
 
-* Dataset ratings yang awalnya terdiri dari **25000095 baris**, dikurangi hingga **135714  baris** karena RAM tidak menyanggupi dataset yang terlalu banyak. Pengurangan baris didasarkan oleh 1000 pengguna pertama (berdasarkan userId) dan hanya mengambil film yang setidaknya memiliki penilaian sebanyak 3.
-
-* Dataset movies yang awalnya terdiri dari **62423 baris**, dikurangi hingga **5699 baris** karena RAM tidak menyanggupi dataset yang terlalu banyak. Pengurangan baris didasarkan oleh movieId hasil saring ratings_reduced.csv
-
 * **Tidak ditemukan nilai duplikat** dalam dataset. Hal ini penting untuk memastikan tidak ada baris data yang secara tidak sengaja menggandakan informasi pelanggan.
 
 * Untuk memahami keragaman nilai dalam fitur kategorikal seperti `rating` dilakukan eksplorasi menggunakan fungsi `value_counts()` agar mengetahui distribusi tiap jumlah rating.
@@ -76,7 +72,14 @@ Tahap ini mencakup proses transformasi data mentah menjadi bentuk yang siap digu
 
 ---
 
-###  1. **Menggabungkan Data**:
+###  1. **Reduce Data**:
+* Dataset ratings yang awalnya terdiri dari **25000095 baris**, dikurangi hingga **135714  baris** karena RAM tidak menyanggupi dataset yang terlalu banyak. Pengurangan baris didasarkan oleh 1000 pengguna pertama (berdasarkan userId) dan hanya mengambil film yang setidaknya memiliki penilaian sebanyak 3.
+
+* Dataset movies yang awalnya terdiri dari **62423 baris**, dikurangi hingga **5699 baris** karena RAM tidak menyanggupi dataset yang terlalu banyak. Pengurangan baris didasarkan oleh movieId hasil saring ratings_reduced.csv
+
+---
+
+###  2. **Menggabungkan Data**:
    - Menggabungkan dataframe `ratings_reduced` (berisi data rating) dengan `movies_reduced` (berisi data film)
    - Digabungkan berdasarkan kolom `movieId` yang sama di kedua dataframe
    - Hasilnya adalah dataframe baru yang berisi informasi rating + detail film
@@ -87,7 +90,7 @@ movie_data = pd.merge(ratings_reduced, movies_reduced, on='movieId')
 
 ---
 
-###  2. **Membuat Matriks User-Item**:
+###  3. **Membuat Matriks User-Item**:
    - Membuat matriks dengan:
      - Baris: `userId` (setiap pengguna)
      - Kolom: `title` (judul film)
@@ -100,7 +103,7 @@ user_item_matrix = movie_data.pivot_table(index='userId', columns='title', value
 
 ---
 
-###  3. **Konversi ke Numpy Array**
+###  4. **Konversi ke Numpy Array**
 
    Konversi DataFrame menjadi array (matriks angka) supaya bisa diproses oleh model machine learning. Data ini berisi rating dari user terhadap film
 
@@ -110,7 +113,7 @@ X = user_item_matrix.values
 
 ---
 
-###  4. **Split Data**
+###  5. **Split Data**
    Data dibagi menjadi dua bagian:
    * **80%** untuk melatih model (X\_train)
    * **20%** untuk menguji model (X\_test)
@@ -229,10 +232,30 @@ Ini menunjukkan bahwa:
    * Dari grafik, terlihat bahwa dengan **50 komponen**, kita hanya bisa menjelaskan sekitar **49-50%** dari total informasi dalam data asli.
    * Ini normal untuk data yang sangat sparse (jarang terisi), seperti yang kita miliki dengan **sparsity 97.62%**.
 
+### 3. **Evaluasi terhadap Business Understanding**
+
+Evaluasi dilakukan menggunakan **Root Mean Squared Error (RMSE)** untuk mengukur seberapa akurat sistem merekomendasikan film berdasarkan rating prediksi. Hasil RMSE sebesar **0.4388** menunjukkan bahwa model mampu melakukan prediksi rating dengan kesalahan rata-rata yang kecil.
+
+#### 🟢 Apakah sudah menjawab problem statement?
+
+**Ya.** Sistem berhasil merekomendasikan film relevan berdasarkan rating pengguna lain, sesuai dengan problem statement:
+
+> *"Bagaimana cara merekomendasikan film yang relevan kepada pengguna berdasarkan preferensi pengguna lain?"*
+
+#### 🟢 Apakah berhasil mencapai goals?
+
+**Ya.** Sistem menghasilkan **Top-N rekomendasi** yang dipersonalisasi untuk setiap user, yang berarti tujuan “mampu memberikan rekomendasi akurat” tercapai.
+
+#### 🟢 Apakah solusi yang direncanakan berdampak?
+
+**Ya.**
+Pendekatan **Collaborative Filtering dengan SVD** berhasil mengatasi masalah *data sparsity* (97.62%) dan cold start pada item, dan mampu memberikan rekomendasi yang *berdasarkan komunitas pengguna*, tanpa memerlukan atribut konten film.
+
 
 ## Kesimpulan:  
   * **SVD cocok digunakan** karena mampu menangkap pola penting meskipun data sangat kosong.
 
   * Sparsity tinggi (97.62%) Data sangat jarang diisi rating — cocok pakai model seperti SVD yang bisa memprediksi data hilang.                                 
   * SVD Explained Variance membantu memilih berapa banyak "fitur tersembunyi" (komponen) yang perlu digunakan untuk mendapatkan representasi data yang bagus.
+
 
